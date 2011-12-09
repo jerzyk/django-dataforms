@@ -9,7 +9,16 @@ function setBindings() {
     $.each(binding_selectors, function(index, binding){
         var binding = jQuery.parseJSON($(this).val());
         if (binding) {
-            bindings.push(binding);
+            //for the performance update
+            var bindingArray = [];
+
+            $.each(binding, function(idx, value){
+                if (value.operator == 'in-list' || value.operator == 'no-in-list') {
+                    value.value = jQuery.parseJSON(value.value);
+                }
+                bindingArray.push(value);
+            });
+            bindings.push(bindingArray);
         }
         
         // Remove values from all hidden fields
@@ -82,28 +91,28 @@ function doBindings(event, noAnimation) {
     // Assign the binding
     var selector = $(event.currentTarget);
     var bindings = selector.data('bindings');
-    
+
     $.each(bindings, function(index, binding){
         var isTrue = hasTruth(selector, binding);    
-    
+
         if (noAnimation) {
             var speed = 0;
         }
         else {
             var speed = 100;
         }
-    
+
         // Do show/hide action
         if (binding.action == 'show-hide') {
     
-                
+            var show_items = [], hide_items = [];
             // If true
             if (isTrue) {
                 
                 if (binding.true_field) {
                     // Loop through the true fields to show
                     $.each(binding.true_field, function(index, selector){
-                        $("label[for*='id_"+selector+"']").closest(".dataform-field,tr,ul,p,li").show(speed);
+                        show_items.push($("label[for*='id_"+selector+"']").closest(".dataform-field,tr,ul,p,li"));
                     });
                 }
                 
@@ -113,13 +122,13 @@ function doBindings(event, noAnimation) {
     
                         var bindingElement = smartGetSelector(selector[0], selector[1]);
                         
-                        $("label[for*='id_"+selector[0]+"_0']").first().show(speed);
+                        show_items.push($("label[for*='id_"+selector[0]+"_0']").first());
                         // Show if the value matches the fieldchoice
                         if (bindingElement.is("option")) {
                             bindingElement.removeAttr('disabled');
                         }
                         else {
-                            bindingElement.closest('li').show(speed)
+                            show_items.push(bindingElement.closest('li'))
                         }
                     });
                 }
@@ -155,8 +164,12 @@ function doBindings(event, noAnimation) {
                     });
                 }
             }
-                
-            
+
+            $(show_items).each(function(){
+                $(this).show(speed)
+            });
+
+
         }
         // Do custom function, not implemented yet...
         else {
@@ -276,6 +289,21 @@ function hasTruth(selector, binding) {
                 }
             });
         }
+
+        if (bindingOperator == 'in-list') {
+            $.each(selectorValue, function(index, value){
+                if ($.inArray(value, bindingValue) != -1)
+                    result = true;
+            });
+        }
+
+        if (bindingOperator == 'not-in-list') {
+            $.each(selectorValue, function (index, value) {
+                if ($.inArray(value, bindingValue) == -1)
+                    result = true;
+            });
+        }
+
     }
     
     binding_results[binding.id] = result
